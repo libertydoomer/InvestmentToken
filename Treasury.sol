@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
+/// @title Treasury
+/// @author libertydoomer
+/// @notice Contract manages deposits, issues NFT in exchange for deposits and processes commissions
 contract Treasury is Ownable, ERC721 {
     using SafeMath for uint256;
 
@@ -29,33 +32,35 @@ contract Treasury is Ownable, ERC721 {
         myToken = IERC20(_myTokenAddress);
     }
 
-    // Функция для получения остатка комиссии на контракте Treasury
+    /// @notice Function for receiving the remaining commission on the Treasury contract
     function getCommissionBalance() external view returns (uint256) {
         return myToken.balanceOf(address(this));
     }
 
-    // Функция для снятия комиссии владельцем контракта Treasury
+    /// @notice Function for removing the commission by the owner of the Treasury contract
     function withdrawCommission() external onlyOwner {
         uint256 commissionBalance = myToken.balanceOf(address(this));
         require(commissionBalance > 0, "No commission to withdraw");
 
-        // Переводим комиссию владельцу
+        /// @dev We transfer the commission to the owner
         require(myToken.transfer(owner(), commissionBalance), "Commission transfer to owner failed");
 
-        // Обновляем общую сумму комиссии
+        /// @dev Updating the total commission amount
         totalCommission = totalCommission.add(commissionBalance);
     }
 
+    /// @notice Function accepts Ether as a commission and increments the total commission amount while emitting an event 
+    /// with the sender's address and the received amount
     function receiveCommission() external payable {
         require(msg.value > 0, "Commission amount must be greater than zero");
 
-        // Увеличиваем общую сумму комиссии
+        /// @dev Increasing the total amount of the commission
         totalCommission = totalCommission.add(msg.value);
 
         emit CommissionReceived(msg.sender, msg.value);
     }
 
-    // Функция для вложения токенов и выпуска NFT
+    /// @notice Function for embedding tokens and issuing NFT
     function depositAndIssueNft(uint256 _tokenAmount) external {
         require(_tokenAmount > 0, "Deposit amount must be greater than zero");
         require(myToken.transferFrom(msg.sender, address(this), _tokenAmount), "Token transfer to Treasury failed");
@@ -72,7 +77,7 @@ contract Treasury is Ownable, ERC721 {
         depositNftId++;
     }
 
-    // Функция для погашения NFT и получения депозита и вознаграждения
+    /// @notice Function for repayment of NFT and receipt of deposit and remuneration
     function redeemNft(uint256 _tokenId) external {
         require(_exists(_tokenId), "NFT does not exist");
         require(ownerOf(_tokenId) == msg.sender, "You are not the owner of this NFT");
